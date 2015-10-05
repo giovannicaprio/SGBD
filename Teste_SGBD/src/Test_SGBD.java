@@ -4,6 +4,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 
 
 public class Test_SGBD {
@@ -35,7 +36,13 @@ public void LeituraArquivo() throws IOException{
         	try{
         		//preenchimento do buffer 
         		leitura.read(btTam,(int) posIni, len);
-	        	 StringBuilder sbDados = new StringBuilder();
+               	 StringBuilder sbDados = new StringBuilder();
+               	ByteBuffer btSeparacao = ByteBuffer.wrap(btTam);
+               	
+               	
+               	
+               	 
+               	 
 	        	    for (byte b : btTam) {
 	        	    	char cLetra = (char)b;
 	        	    	//visualizar dados
