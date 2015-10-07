@@ -1,86 +1,111 @@
-import java.io.EOFException;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-
+import java.util.HashMap;
 
 public class Test_SGBD {
 
-	public  void main(String[] args) throws IOException {
-		
+	public static void main(String[] args) throws IOException {
 		CriarArquivo();
-		GravarArquivo();
-		LeituraArquivo();        	
-}
+		GravarIndice("1,2,3,4,5","3","1");
+		RecuperaIndice();
+		//LeituraArquivo();        	
+	}
 
-public void LeituraArquivo() throws IOException{
-	/*###################### LEITURA DE DADOS ######################*/
+	public static void LeituraArquivo(int iOpcao ,HashMap mapa) throws IOException{
+
 	RandomAccessFile leitura = new RandomAccessFile("arquivo.bin", "rw");
-    byte btTam[] = new byte[4000];
-    boolean bContinuaLeitura = true;
-    while(bContinuaLeitura){
-    	long size;	
-        long posIni = 0;
-    	try{
-    		//tamanho do arquivo
-        	size = leitura.readLong();
-        }catch (EOFException e){
-        	break;
-        }
-    	//leitura de datablock 
-        int len = 4000;
-        while(size > 0 && size > len){
-        	try{
-        		//preenchimento do buffer 
-        		leitura.read(btTam,(int) posIni, len);
-               	 StringBuilder sbDados = new StringBuilder();
-               	ByteBuffer btSeparacao = ByteBuffer.wrap(btTam);
-               	
-               	
-               	
-               	 
-               	 
-	        	    for (byte b : btTam) {
-	        	    	char cLetra = (char)b;
-	        	    	//visualizar dados
-	        	        sbDados.append(cLetra);
-	        	        //GAMBIARRA PARA STOP bytes, para o procedimento quando encontrar \n
-	        	        if(b == 10){
-	        	        	break;
-	        	        }
-	        	    }
-	        	    // prints character
-		            System.out.print(sbDados.toString());
-	          	size -= len;
-	          	posIni += len + 1;
-	          	len = len + len;	
-        	}catch (IndexOutOfBoundsException e){
-        			System.out.println("Fim dos dados!");
-        			//Para a leitura
-        			bContinuaLeitura = false;
-        			//Termina o segundo loop
-        			break;
-        	}
-        }
-    }
-    leitura.close();	
-}
+	byte[] teste = new byte[4096];
+	StringBuilder sbDados = new StringBuilder();
+	int posIni = 0;
+	int posFim = 4096; // 4k
+	int size = (int) leitura.length();
+	
 
-public  void GravarArquivo() {
+	switch (iOpcao) {
+	//Retorna o Indice em um hashMap
+	case 1:
+		int icountZero= 0;
+		leitura.read(teste, posIni, posFim);
+		for (int i = 0; i < teste.length ; i++){
+			 if(teste[i] != 0){
+				char cLetra = (char)teste[i];
+		   		sbDados.append(cLetra); 
+			 }else {
+				 
+				 if (icountZero == 0 && sbDados.toString().length() > 0){
+					 //Armazena a lista FREE
+					  mapa.put("free", sbDados.toString());
+					  //Limpa a variável
+					  sbDados = new StringBuilder();
+						 icountZero ++; 
+				 }else if (sbDados.toString().length() > 0 && icountZero == 1){
+					  mapa.put("root", sbDados.toString());	
+					  //Limpa a variável
+					  sbDados = new StringBuilder();
+					   icountZero ++; 
+				 }
+				 else if(sbDados.toString().length() > 0 && icountZero > 1){
+					 mapa.put("table", sbDados.toString());	
+					  //Limpa a variável
+					  sbDados = new StringBuilder();
+					   break;  
+					
+				 }
+				 //############### FIXME ###########
+						 
+			 }
+		 }	
+		break;
+	//Retorna um dataBlock
+	case 2:
+		while(size > 0 && posIni < size){
+			leitura.read(teste, posIni, posFim);
+			
+			
+			
+			for (int i = 0; i < teste.length ; i++){
+				 if(teste[i] != 0){
+					char cLetra = (char)teste[i];
+			   		sbDados.append(cLetra); 
+				 }              		    
+			 }
+				System.out.print(sbDados.toString());
+				size -= posFim;
+				posIni += posFim + 1;
+				posFim = posFim + posFim;	
+			}
+		
+		   leitura.close();	   
+	}
+
+
+	}
+
+	public static void GravarIndice(String listFree, String root, String table) {
 	/*###################### GRAVACAO DE DADOS ######################*/
 	try{
 		//Acesso randomico 
 		RandomAccessFile escrita = new RandomAccessFile("arquivo.bin", "rw");
-		// define o ponteiro do arquivo na posição 0
+		//Referencias
+		String sfree = listFree;
+		String sroot = root;
+		String stable = table;
+		//Colocando valores nas posições
 		escrita.seek(0);
-		// Escrever algo no arquivo
-		escrita.writeUTF(" Hello World teste com dados gravados  \n");
+		escrita.write(sfree.getBytes("utf-8"));
+		
+		escrita.seek(1001);
+		escrita.write(sroot.getBytes("utf-8"));
+		
+		escrita.seek(1021);
+		escrita.write(stable.getBytes("utf-8"));
+		
 		//Fecha o arquivo
 		escrita.close();	
-
+		
 	}catch(FileNotFoundException e){
 		e.printStackTrace();
 		System.out.println("Erro = "+e);  
@@ -88,26 +113,37 @@ public  void GravarArquivo() {
 		e.printStackTrace();
 		System.out.println("Erro = "+e);  
 	}	
-}
+	}
+	
 
-public  void CriarArquivo() {
+	public static HashMap RecuperaIndice() throws IOException{
+		DataBlock dtBlock =  new DataBlock();
+		HashMap <String, String>  mapa = new HashMap<String, String>();
+		LeituraArquivo(1,mapa);
+		return mapa;	
+	}
+
+	public static void CriarArquivo() {
 	try{
 		FileOutputStream out = new FileOutputStream("arquivo.bin");  
 		ObjectOutputStream os = new ObjectOutputStream(out);
 		//Especifica o tamanho do arquivo 256MB
-		byte[] buf = new byte[260880000];
+		byte[] buf = new byte[260884000];
 		os.write(buf);
 		os.flush();
-		os.close();	       
-			
+		os.close();	 		
+	
 	}catch(FileNotFoundException e){
 		e.printStackTrace();
 		System.out.println("Erro = "+e);  
 	}catch(IOException e){
 		e.printStackTrace();
 		System.out.println("Erro = "+e);  
+	}catch(IndexOutOfBoundsException e){
+		e.printStackTrace();
+		System.out.println("Erro = "+e);  
+	}		
 	}	
-}	
 	
 	
 }

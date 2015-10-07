@@ -12,4 +12,11 @@ public class DataBlock {
 		this.ant = ant;
 		this.dados = dados;
 	}
+	public DataBlock(){
+		this.id = 0;
+		this.prox = null;
+		this.ant = null;
+		this.dados = "";	
+	}
+	
 }
