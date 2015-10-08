@@ -1,3 +1,4 @@
+import java.awt.image.ConvolveOp;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -5,17 +6,81 @@ import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.util.HashMap;
 
+import org.xml.sax.helpers.ParserFactory;
+
 public class Test_SGBD {
 
 	public static void main(String[] args) throws IOException {
 		CriarArquivo();
 		GravarIndice("1,2,3,4,5","3","1");
+		//Teste de Insert
+		String rowID = "200";
+		String texto = "Bla Bla bla \n";
+		//
+		GravaDataBlock( rowID, texto);
+		
+		byte[] dados = new byte[rowID.getBytes().length + texto.getBytes().length];
+				
+		
+		
+		
+				
+		
 		RecuperaIndice();
 		//LeituraArquivo();        	
 	}
 
-	public static void LeituraArquivo(int iOpcao ,HashMap mapa) throws IOException{
-
+	public static void GravaDataBlock(String rowID, String texto) throws IOException{
+		RandomAccessFile leitura = new RandomAccessFile("arquivo.bin", "rw");
+		//Hash Map
+		HashMap <Integer, String>  mapDataBlock = new HashMap<Integer, String>();
+		//Posição de referência do valor dentro do rowid
+		int posrowid=0;
+		//Auxiliar para ler os dados do byte	
+		StringBuilder sbDados = new StringBuilder();
+		//Criar um bytes auxiliares
+		byte[] teste = new byte[4096];
+		//Pega a posição de memória do dado dentro do datablock 1;5 ficará so o 5
+		int refPos =Integer.parseInt(rowID.split(";")[1]);		
+		//Referencia para ler a posição inicial do 4kb
+		int posIni = 4096 * Integer.parseInt(rowID.split(";")[0]); // Restará so 1 do 1;5
+		posIni =4096 - posIni;
+		//passagem do bytes vazios e retorno dele preenchido com os dados daquela posição específica
+		leitura.read(teste,posIni,teste.length);
+		//Percorrer e converter o bytes
+		for (int i = 0; i < teste.length ; i++){
+			//Diferente de dados em branco 0 bytes
+			 if(teste[i] != 0){
+				 //Se não for \n como referência de parada 
+				 if(teste[i] != 10){
+					 char cLetra = (char)teste[i];
+					 sbDados.append(cLetra);
+				 }else{
+					 //Adiciona os dados no map 
+					 mapDataBlock.put(posrowid,sbDados.toString());
+					 posrowid ++;
+				 }
+			 }
+		}
+		//Grava na primeira posição os dados
+		if(sbDados.toString().length() == 0){
+			leitura.write(sbDados.toString().getBytes(),posIni,sbDados.toString().getBytes().length);
+		}else{
+			//irá dar um update no arquivo naquela posição 
+			if(mapDataBlock.containsKey(refPos)){
+				mapDataBlock.put(refPos,sbDados.toString());			
+			}else{
+				//TODO Gravara na ultima posição				
+			}
+		}
+		
+		//TODO ver apartir dos dados como fazer a substituição
+		
+		
+	}
+	
+	
+	public static void LeituraArquivo(int iOpcao ,HashMap mapa, int rowID) throws IOException{
 	RandomAccessFile leitura = new RandomAccessFile("arquivo.bin", "rw");
 	byte[] teste = new byte[4096];
 	StringBuilder sbDados = new StringBuilder();
@@ -23,7 +88,11 @@ public class Test_SGBD {
 	int posFim = 4096; // 4k
 	int size = (int) leitura.length();
 	
-
+	//Gambiarra para ler a posição do datablock
+	posIni = 4096 - posFim;
+	posFim = posFim * rowID;
+	
+	//1 - Indice, 2 - DataBlock específico
 	switch (iOpcao) {
 	//Retorna o Indice em um hashMap
 	case 1:
@@ -54,18 +123,13 @@ public class Test_SGBD {
 					   break;  
 					
 				 }
-				 //############### FIXME ###########
-						 
-			 }
+			}
 		 }	
 		break;
-	//Retorna um dataBlock
+	//CASO QUE RETORNA O DATABLOCK ESPECÍFICO
 	case 2:
 		while(size > 0 && posIni < size){
 			leitura.read(teste, posIni, posFim);
-			
-			
-			
 			for (int i = 0; i < teste.length ; i++){
 				 if(teste[i] != 0){
 					char cLetra = (char)teste[i];
@@ -119,7 +183,7 @@ public class Test_SGBD {
 	public static HashMap RecuperaIndice() throws IOException{
 		DataBlock dtBlock =  new DataBlock();
 		HashMap <String, String>  mapa = new HashMap<String, String>();
-		LeituraArquivo(1,mapa);
+		LeituraArquivo(1,mapa,1);
 		return mapa;	
 	}
 
