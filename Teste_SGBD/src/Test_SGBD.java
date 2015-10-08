@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.RandomAccessFile;
 import java.util.HashMap;
+import java.util.Map.Entry;
 
 import org.xml.sax.helpers.ParserFactory;
 
@@ -14,13 +15,12 @@ public class Test_SGBD {
 		CriarArquivo();
 		GravarIndice("1,2,3,4,5","3","1");
 		//Teste de Insert
-		String rowID = "200";
+		int id = 200;
 		String texto = "Bla Bla bla \n";
+		String rowID="5;2";
 		//
-		GravaDataBlock( rowID, texto);
+		GravaDataBlock( id, texto, rowID);
 		
-		byte[] dados = new byte[rowID.getBytes().length + texto.getBytes().length];
-				
 		
 		
 		
@@ -30,6 +30,83 @@ public class Test_SGBD {
 		//LeituraArquivo();        	
 	}
 
+	public static boolean GravaDataBlock(int id, String texto, String rowID) throws IOException{
+		RandomAccessFile leitura = new RandomAccessFile("arquivo.bin", "rw");
+		//Referencia de ter feito UPDATE ou INSERT primeira posicao, além de ter gravado
+		boolean bGravou = false;
+		//Referência para tamanho do ID
+		int tamIDBytes=7;
+		//Hash Map
+		HashMap <Integer, String>  mapDataBlock = new HashMap<Integer, String>();
+		//Posição de referência do valor dentro do rowid
+		int posrowid=0;
+		//Auxiliar para ler os dados do byte e Ler ID do dado	
+		StringBuilder sbDados = new StringBuilder();
+		StringBuilder sbID = new StringBuilder();
+		//Criar um bytes do tamanho de cada datablock auxiliares
+		byte[] datablockAux = new byte[4096];
+		//Pega a posição de memória do dado dentro do datablock 5;2 ficará so o 2
+		int refPos =Integer.parseInt(rowID.split(";")[1]);		
+		//Referencia para ler a posição inicial do 4kb
+		int posIni = 4096 * Integer.parseInt(rowID.split(";")[0]); // Restará so 5 do 5;2
+		posIni =4096 - posIni;
+		//passagem do bytes vazios e retorno dele preenchido com os dados daquela posição específica
+		leitura.read(datablockAux,posIni,datablockAux.length);
+		//Percorrer e converter o bytes
+		for (int i = 0; i < datablockAux.length ; i++){
+			//Diferente de dados em branco 0 bytes
+			 if(datablockAux[i] != 0){
+				 //Se não for \n como referência de parada 
+				 if(datablockAux[i] != 10){
+					 char cLetra = (char)datablockAux[i];
+					//Decrementa1 quando for ID
+					 tamIDBytes--;
+					 if(tamIDBytes > 0){
+						 sbID.append(cLetra); // Guarda a ID
+					 }else{
+						 sbDados.append(cLetra); // Guarda o texto
+					 }
+				 }else{
+					 //Reset Variavel
+					 tamIDBytes = 7;
+					 if(sbID.toString().length()>0){
+						 int IDConvertdo = Integer.parseInt(sbID.toString());
+						 StringBuilder sJuncao = new StringBuilder();
+						 sJuncao.append(sbID.toString());
+						 //UPDATE
+						 if(IDConvertdo == id){ bGravou = true; sJuncao.append(texto);}
+						 //CONDICAO DE NÃO SER O REGISTRO
+						 else{ sJuncao.append(sbDados.toString());}
+						 
+						 mapDataBlock.put(posrowid,sJuncao.toString());
+						 posrowid ++;
+					 }
+				 }
+			 }
+		}
+		//Grava na primeira posição os dados
+		if(mapDataBlock.isEmpty()){
+			bGravou = true;
+			mapDataBlock.put(0,String.valueOf(id).trim() + texto.trim());
+		}
+		//Grava na última posição caso não tenha dentro do datablock 
+		if(!bGravou){
+			mapDataBlock.put(posrowid,String.valueOf(id).trim() + texto.trim());
+			bGravou = true;
+		}
+		
+		//Salvar no buffer
+		datablockAux = new byte[4096];
+		StringBuilder sBGravarDados = new StringBuilder();
+		for(Entry<Integer, String> entry : mapDataBlock.entrySet()) {
+		    //AQUI FICARIA O ID; 5;12358
+		    //AQUI ESCREVER O TEXTO EM BYTES// entry.getValue();
+		}
+		
+		return bGravou;
+	}
+	
+	/* ######################## NÃO APAGAR ######################### 
 	public static void GravaDataBlock(String rowID, String texto) throws IOException{
 		RandomAccessFile leitura = new RandomAccessFile("arquivo.bin", "rw");
 		//Hash Map
@@ -77,7 +154,7 @@ public class Test_SGBD {
 		//TODO ver apartir dos dados como fazer a substituição
 		
 		
-	}
+	}*/
 	
 	
 	public static void LeituraArquivo(int iOpcao ,HashMap mapa, int rowID) throws IOException{
